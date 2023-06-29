@@ -3,20 +3,19 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NotifyGenerator
 {
-	using static SyntaxFactory;
+    using static SyntaxFactory;
     class Program
     {
         private static SyntaxTrivia space = Whitespace(" ");
 
         private static string FieldName(SyntaxToken token)
         {
-            return string.Concat(char.ToLowerInvariant(token.Text[0]), token.Text.Substring(1));
+            return "_" + string.Concat(char.ToLowerInvariant(token.Text[0]), token.Text.Substring(1));
         }
 
         private static SyntaxToken FieldNameToken(SyntaxToken token)
@@ -75,13 +74,22 @@ namespace NotifyGenerator
 
         static void Main(string[] args)
         {
-            if (Environment.GetEnvironmentVariable("REQUEST_METHOD") != "POST")
+            SyntaxTree tree = null;
+            if (args.Contains("-http"))
             {
-                Console.WriteLine("Not a Post");
-                return;
-            }
+                if (Environment.GetEnvironmentVariable("REQUEST_METHOD") != "POST")
+                {
+                    Console.WriteLine("Not a Post");
+                    return;
+                }
 
-            var tree = CSharpSyntaxTree.ParseText(ReadPostData());
+                tree = CSharpSyntaxTree.ParseText(ReadPostData());
+            }
+            else if (args.Any())
+                tree = CSharpSyntaxTree.ParseText(File.ReadAllText(args[0]));
+            else
+                tree = CSharpSyntaxTree.ParseText(Console.In.ReadToEnd());
+
             var root = tree.GetRoot();
             var classes = root.DescendantNodes().OfType<ClassDeclarationSyntax>();
 
